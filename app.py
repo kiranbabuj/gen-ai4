@@ -126,7 +126,7 @@ if api_key:
         if not st.session_state.question_asked:
             st.write("## Assistant's Initial Conversation")
             # Assistant starts the conversation based on the PDF content
-            initial_prompt = prompt_template + "\nSummarize the document and ask a customer-like question."
+            initial_prompt = prompt_template + "\nProvide responses based on the roles selected and refer the document if needed."
             initial_response = query_engine.query(initial_prompt)
             # Add assistant's initial message to conversation history
             st.session_state.conversation_history.append(f"Assistant ({assistant_role}): {initial_response}")
