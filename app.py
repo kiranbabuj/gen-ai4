@@ -1,194 +1,150 @@
 import streamlit as st
 import os
-import pandas as pd
 from llama_index.llms.openai import OpenAI
 from llama_index.core.llms import ChatMessage
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 from llama_index.core import Settings, VectorStoreIndex, SimpleDirectoryReader
-
-
-class Role:
-    """Base class for roles."""
-    def __init__(self, role_name):
-        self.role_name = role_name
-
-    def respond(self, user_input, query_engine):
-        """Method to respond based on user input."""
-        raise NotImplementedError("Subclasses should implement this!")
-
-
-class Customer(Role):
-    """Customer role implementation."""
-    def __init__(self):
-        super().__init__("Customer")
-
-    def respond(self, user_input, query_engine):
-        """Generate a response from the LLM."""
-        llm = OpenAI(model="gpt-4o-mini")  # Choose your model
-        messages = [
-            ChatMessage(role="system", content="You are a customer looking for assistance."),
-            ChatMessage(role="user", content=user_input),
-        ]
-        response = llm.chat(messages)
-        return response
-
-
-class BankEmployee(Role):
-    """Bank Employee role implementation."""
-    def __init__(self):
-        super().__init__("Bank Employee")
-
-    def respond(self, user_input, query_engine):
-        """Generate a response based on user input using document context."""
-        # Here we simulate the Bank Employee responding as if it were a customer
-        llm = OpenAI(model="gpt-4o-mini")  # Use LLM to generate a customer-like response
-        messages = [
-            ChatMessage(role="system", content="You are a bank employee responding to a customer."),
-            ChatMessage(role="user", content=user_input),
-        ]
-        response = llm.chat(messages)
-        
-        # Generate a document-based response to assess the quality
-        document_based_response = query_engine.query(user_input)
-        feedback_text = evaluate_response(user_input, document_based_response)
-
-        return response, document_based_response, feedback_text
-
-
-def evaluate_response(user_input, response_text):
-    """Evaluate the response based on the user input and provide feedback."""
-    key_terms = ['bank', 'loan', 'account', 'deposit', 'withdrawal', 'interest rate']
-    missing_terms = [term for term in key_terms if term not in response_text.lower()]
-
-    if missing_terms:
-        feedback = f"Missing key terms: {', '.join(missing_terms)}. Consider including them."
-    else:
-        feedback = "Great response! It covers all necessary points."
-
-    return feedback
-
 
 # Initialize conversation history and roles in session state
 if 'conversation_history' not in st.session_state:
     st.session_state.conversation_history = []
 if 'question_asked' not in st.session_state:
     st.session_state.question_asked = False
-if 'api_key' not in st.session_state:
-    st.session_state.api_key = None  # Initialize API key in session state
-
+if 'user_role' not in st.session_state:
+    st.session_state.user_role = "Customer"
+if 'assistant_role' not in st.session_state:
+    st.session_state.assistant_role = "Bank Employee"
 
 # Streamlit UI for OpenAI API key input
 st.title("Conversational Assistant")
 
-# Input API Key (store in session state)
-if st.session_state.api_key is None:  # Only show input if the API key is not set
-    api_key = st.text_input("Enter your OpenAI API key", type="password")
-    if api_key:
-        st.session_state.api_key = api_key  # Store API key in session state
-        os.environ["OPENAI_API_KEY"] = api_key
-        st.success("API Key set successfully.")
-else:
-    st.success("API Key is already set.")
+# Input API Key
+api_key = st.text_input("Enter your OpenAI API key", type="password")
 
-# Select roles using a dropdown menu
-role_choice = st.selectbox("Select your role:", options=["Customer", "Bank Employee"])
+if api_key:
+    os.environ["OPENAI_API_KEY"] = api_key
+    st.success("API Key set successfully.")
 
-# Create role instances based on user choice
-if role_choice == "Customer":
-    current_role = Customer()
-else:
-    current_role = BankEmployee()
+    # Select roles using a dropdown menu
+    st.session_state.user_role = st.selectbox(
+        "Select user role:",
+        options=["Customer", "Bank Employee"],
+        index=0  # Default to "Customer"
+    )
+    
+    st.session_state.assistant_role = st.selectbox(
+        "Select assistant role:",
+        options=["Bank Employee", "Customer"],
+        index=0  # Default to "Bank Employee"
+    )
 
-# Embeddings section
-st.write("## Embeddings Section")
-Settings.embed_model = HuggingFaceEmbedding(model_name="BAAI/bge-small-en-v1.5")
-Settings.llm = OpenAI(model="gpt-4o-mini", max_tokens=300)
+    # Choose the LLM model
+    model_choice = st.selectbox("Select an LLM model", ["gpt-4o-mini"])
 
-# Document loading and querying
-uploaded_file = st.file_uploader("Upload a PDF file", type=["pdf"])
+    # Initialize the LLM
+    st.write("Initializing LLM model...")
+    llm = OpenAI(model=model_choice)
 
-if uploaded_file is not None:
-    # Save the uploaded PDF locally
-    with open("uploaded_file.pdf", "wb") as f:
-        f.write(uploaded_file.getbuffer())
+    # Embeddings section
+    st.write("## Embeddings Section")
+    Settings.embed_model = HuggingFaceEmbedding(model_name="BAAI/bge-small-en-v1.5")
+    Settings.llm = OpenAI(model="gpt-4o-mini", max_tokens=300)
 
-    # Load documents and create an index
-    documents = SimpleDirectoryReader("./").load_data()
-    index = VectorStoreIndex.from_documents(documents)
+    # Document loading and querying
+    uploaded_file = st.file_uploader("Upload a PDF file", type=["pdf"])
 
-    # Initialize the query engine
-    query_engine = index.as_query_engine()
+    if uploaded_file is not None:
+        # Save the uploaded PDF locally
+        with open("uploaded_file.pdf", "wb") as f:
+            f.write(uploaded_file.getbuffer())
 
-    # Layout for user input and clear history button side by side
-    col1, col2 = st.columns([4, 1])
+        # Load documents and create an index
+        documents = SimpleDirectoryReader("./").load_data()
+        index = VectorStoreIndex.from_documents(documents)
 
-    with col1:
-        user_input = st.text_input("Your response:")
+        # Initialize the query engine
+        query_engine = index.as_query_engine()
 
-    with col2:
-        if st.button("Clear History"):
-            # Clear conversation history and reset flags
-            st.session_state.conversation_history = []
-            st.session_state.question_asked = False
+        # Layout for user input and clear history button side by side
+        col1, col2 = st.columns([4, 1])
 
-    # Process user input if available
-    if user_input:
-        # Add user input to conversation history
-        st.session_state.conversation_history.append(f"{current_role.role_name}: {user_input}")
+        with col1:
+            user_input = st.text_input("Your response:")
 
-        # Get the response based on the role
-        if isinstance(current_role, BankEmployee):
-            response_text, document_based_response, feedback_text = current_role.respond(user_input, query_engine)
-            st.session_state.conversation_history.append(f"{current_role.role_name}: {response_text} (Document Response: {document_based_response} | Feedback: {feedback_text})")
-        else:
-            response_text = current_role.respond(user_input, query_engine)
-            st.session_state.conversation_history.append(f"{current_role.role_name}: {response_text}")
+        with col2:
+            if st.button("Clear History"):
+                # Clear conversation history and reset flags
+                st.session_state.conversation_history = []
+                st.session_state.question_asked = False
 
-        st.session_state.question_asked = False  # Reset to allow another question
+        # Automatically query the document to initiate the conversation
+        if not st.session_state.question_asked:
+            st.write("## Assistant's Initial Conversation")
 
-        # Display the assistant's response
-        st.write(f"{current_role.role_name}: {response_text}")
+            # Generate role-specific initial response
+            if st.session_state.assistant_role == "Bank Employee":
+                initial_response = "Good morning, welcome to Canara Bank. How can I assist you today?"
+            elif st.session_state.assistant_role == "Customer":
+                initial_response = "Hi there! I'm a customer, looking for assistance."
 
-    # Display conversation history in a side-by-side format
+            # Add assistant's initial message to conversation history
+            st.session_state.conversation_history.append(f"{st.session_state.assistant_role}: {initial_response}")
+            st.session_state.question_asked = True
+
+            # Display the assistant's initial message
+            st.write(f"{st.session_state.assistant_role}: {initial_response}")
+
+        # Process user input if available
+        if user_input:
+            # Add user input to conversation history
+            st.session_state.conversation_history.append(f"{st.session_state.user_role}: {user_input}")
+
+            # Query the document for a response based on the user's input
+            document_based_response = query_engine.query(user_input)
+
+            # Safely convert document_based_response to string
+            if isinstance(document_based_response, str):
+                response_text = document_based_response
+            else:
+                response_text = str(document_based_response)
+
+            # Ensure user_input and response_text are not empty and have valid content for scoring
+            if user_input and response_text:
+                try:
+                    # Calculate relevance score based on string similarity
+                    relevance_score = len(set(user_input.lower().split()) & set(response_text.lower().split())) * 10 // len(user_input.split())
+                    relevance_score = max(1, min(relevance_score, 10))  # Ensure the rating is between 1 and 10
+                except ZeroDivisionError:
+                    # Handle division by zero in case of empty or invalid input
+                    relevance_score = 1
+            else:
+                relevance_score = 1  # Default rating for invalid/empty input
+
+            # Add assistant's response and follow-up question to conversation history
+            st.session_state.conversation_history.append(f"{st.session_state.assistant_role}: {response_text} (Rating: {relevance_score}/10)")
+            st.session_state.question_asked = False  # Reset to allow another question
+
+            # Display the assistant's response
+            st.write(f"{st.session_state.assistant_role}: {response_text} (Rating: {relevance_score}/10)")
+
+            # Generate role-specific follow-up response
+            if st.session_state.assistant_role == "Bank Employee":
+                follow_up_response = query_engine.query("As a bank employee, ask the customer another banking-related question.")
+            elif st.session_state.assistant_role == "Customer":
+                follow_up_response = query_engine.query("As a customer, ask a follow-up question to the assistant.")
+
+            # Add follow-up response to the conversation history
+            st.session_state.conversation_history.append(f"{st.session_state.assistant_role}: {follow_up_response}")
+            st.write(f"{st.session_state.assistant_role}: {follow_up_response}")
+
+    # Display conversation history with different colors and numbering
     if st.session_state.conversation_history:
         st.write("## Conversation History")
-
-        # Prepare data for the DataFrame
-        customer_messages = []
-        bank_employee_messages = []
-
-        # Track the last user role
-        last_role = None
-
-        for entry in st.session_state.conversation_history:
-            role, message = entry.split(": ", 1)
-
-            if role == "Customer":
-                # If the role is the same as the last one, append to the last message
-                if last_role == "Customer":
-                    customer_messages[-1] += f" | {message.strip()}"
-                else:
-                    customer_messages.append(message.strip())
-                    bank_employee_messages.append("")  # Empty entry for the bank employee column
+        for idx, entry in enumerate(st.session_state.conversation_history, start=1):
+            if entry.startswith(st.session_state.user_role):
+                st.markdown(f"<div style='color:blue;'>**{idx}. {entry}**</div>", unsafe_allow_html=True)
             else:
-                # If the role is the same as the last one, append to the last message
-                if last_role == "Bank Employee":
-                    bank_employee_messages[-1] += f" | {message.strip()}"
-                else:
-                    bank_employee_messages.append(message.strip())
-                    customer_messages.append("")  # Empty entry for the customer column
-
-            # Update the last role
-            last_role = role
-
-        # Create a DataFrame
-        conversation_df = pd.DataFrame({
-            "Customer": customer_messages,
-            "Bank Employee": bank_employee_messages
-        })
-
-        # Display the DataFrame as a table
-        st.table(conversation_df)
+                st.markdown(f"<div style='color:green;'>**{idx}. {entry}**</div>", unsafe_allow_html=True)
 
     # Download conversation history as a text file
     if st.session_state.conversation_history:
