@@ -39,10 +39,20 @@ class BankEmployee(Role):
         super().__init__("Bank Employee")
 
     def respond(self, user_input, query_engine):
-        """Generate a document-based response."""
+        """Generate a response based on user input using document context."""
+        # Here we simulate the Bank Employee responding as if it were a customer
+        llm = OpenAI(model="gpt-4o-mini")  # Use LLM to generate a customer-like response
+        messages = [
+            ChatMessage(role="system", content="You are a bank employee responding to a customer."),
+            ChatMessage(role="user", content=user_input),
+        ]
+        response = llm.chat(messages)
+        
+        # Generate a document-based response to assess the quality
         document_based_response = query_engine.query(user_input)
         feedback_text = evaluate_response(user_input, document_based_response)
-        return document_based_response, feedback_text
+
+        return response, document_based_response, feedback_text
 
 
 def evaluate_response(user_input, response_text):
@@ -128,8 +138,8 @@ if uploaded_file is not None:
 
         # Get the response based on the role
         if isinstance(current_role, BankEmployee):
-            response_text, feedback_text = current_role.respond(user_input, query_engine)
-            st.session_state.conversation_history.append(f"{current_role.role_name}: {response_text} (Feedback: {feedback_text})")
+            response_text, document_based_response, feedback_text = current_role.respond(user_input, query_engine)
+            st.session_state.conversation_history.append(f"{current_role.role_name}: {response_text} (Document Response: {document_based_response} | Feedback: {feedback_text})")
         else:
             response_text = current_role.respond(user_input, query_engine)
             st.session_state.conversation_history.append(f"{current_role.role_name}: {response_text}")
