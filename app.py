@@ -21,6 +21,7 @@ st.title("Conversational Assistant")
 # Input API Key
 api_key = st.text_input("Enter your OpenAI API key", type="password")
 
+# Store API key in session state
 if api_key:
     os.environ["OPENAI_API_KEY"] = api_key
     st.success("API Key set successfully.")
@@ -76,9 +77,11 @@ if api_key:
 
         with col2:
             if st.button("Clear History"):
-                # Clear conversation history and reset flags
+                # Clear conversation history and reset flags except for the API key
                 st.session_state.conversation_history = []
                 st.session_state.question_asked = False
+                st.session_state.user_role = "Customer"  # Reset to default role
+                st.session_state.assistant_role = "Bank Employee"  # Reset to default role
 
         # Automatically query the document to initiate the conversation
         if not st.session_state.question_asked:
