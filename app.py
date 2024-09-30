@@ -8,6 +8,10 @@ from llama_index.core import Settings, VectorStoreIndex, SimpleDirectoryReader
 # Initialize conversation history in session state
 if 'conversation_history' not in st.session_state:
     st.session_state.conversation_history = []
+if 'assistant_followup_question' not in st.session_state:
+    st.session_state.assistant_followup_question = None  # To store assistant's follow-up question
+if 'awaiting_user_response' not in st.session_state:
+    st.session_state.awaiting_user_response = False  # Control flow for question-response cycle
 
 # Streamlit UI for OpenAI API key input
 st.title("Virtual Customer")
@@ -43,34 +47,50 @@ if api_key:
         documents = SimpleDirectoryReader("./").load_data()
         index = VectorStoreIndex.from_documents(documents)
 
-        # Automatically query the document to initiate the conversation
-        st.write("## Assistant's Initial Conversation")
-        
+        # Initialize the assistant's conversation based on the PDF content
         query_engine = index.as_query_engine()
-        # Assistant starts the conversation based on the PDF content
-        initial_response = query_engine.query("Your are a customer of the bank, ask relevant single line questions as a customer would  ask by Summarising the document then the user will give the answer accordingly you have the rate the user from a scale of 1 to 10 by verifying how accurate the answer based on the document. continously as questions after the user provides answer.")
-        
-        # Add assistant's initial message to conversation history
-        st.session_state.conversation_history.append(f"Assistant: {initial_response}")
 
-        # Display the assistant's initial message
-        st.write(f"Assistant: {initial_response}")
+        if not st.session_state.assistant_followup_question and not st.session_state.awaiting_user_response:
+            # Assistant starts the conversation based on the PDF content
+            initial_response = query_engine.query(
+                "You are a customer of the bank. Ask relevant single-line questions as a customer would ask, by summarizing the document. The user will give the answer accordingly, and you will rate the user on a scale of 1 to 10 based on how accurate the answer is. Continue asking questions after the user provides an answer."
+            )
+
+            # Add assistant's initial message to conversation history
+            st.session_state.conversation_history.append(f"Assistant: {initial_response}")
+            st.session_state.assistant_followup_question = initial_response
+            st.session_state.awaiting_user_response = True  # Start expecting the user's input
+
+        # Display the assistant's current question or follow-up question
+        if st.session_state.assistant_followup_question:
+            st.write(f"Assistant: {st.session_state.assistant_followup_question}")
 
         # Allow the user to respond
         user_input = st.text_input("Your response:")
 
-        if user_input:
+        if user_input and st.session_state.awaiting_user_response:
             # Add user input to conversation history
             st.session_state.conversation_history.append(f"User: {user_input}")
 
-            # Use user input to continue querying the PDF
+            # Use user input to generate the assistant's next question and provide a rating
             user_query_response = query_engine.query(user_input)
+            
+            # Generate a new question based on the response
+            followup_question = query_engine.query("Ask the next relevant question.")
 
-            # Add assistant's response to conversation history
-            st.session_state.conversation_history.append(f"Assistant: {user_query_response}")
+            # Simulate a rating mechanism (optional, could also be handled by the LLM itself)
+            rating = "Rating: " + str(min(10, max(1, len(user_input) % 10)))  # Mock rating from 1 to 10
 
-            # Display assistant's response
-            st.write(f"Assistant: {user_query_response}")
+            # Add assistant's response and follow-up question to conversation history
+            st.session_state.conversation_history.append(f"Assistant: {user_query_response} ({rating})")
+            st.session_state.assistant_followup_question = followup_question
+
+            # Display assistant's follow-up question
+            st.write(f"Assistant: {user_query_response} ({rating})")
+            st.write(f"Assistant (Next Question): {followup_question}")
+
+            # Continue the cycle
+            st.session_state.awaiting_user_response = True
 
     # Display conversation history
     if st.session_state.conversation_history:
@@ -89,3 +109,4 @@ if api_key:
         )
 else:
     st.warning("Please enter your OpenAI API key to continue.")
+
