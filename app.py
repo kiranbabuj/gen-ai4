@@ -16,8 +16,8 @@ if 'assistant_role' not in st.session_state:
 
 # Define prompt templates for roles
 prompt_templates = {
-    "Bank Employee": "Your role is a professional banker, patiently answer all the questions by referring to the PDF document.",
-    "Customer": "You are a new customer of the bank and sometimes an existing customer of Canara Bank. Your role is to know about bank products and services. You can show all kinds of emotions and behave like a natural customer randomly."
+    "Bank Employee": "Your role is a professional banker, patiently answer all the questions by referring to the PDF document with the Customer.",
+    "Customer": "You are a new customer of the bank and sometimes an existing customer of Canara Bank. Your role is to know about bank products and services. You can show all kinds of emotions and behave like a natural customer randomly. you interact with a bank employee."
 }
 
 # Streamlit UI for OpenAI API key input
