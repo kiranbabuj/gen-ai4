@@ -15,7 +15,7 @@ if 'assistant_role' not in st.session_state:
     st.session_state.assistant_role = "Bank Employee"
 
 # Streamlit UI for OpenAI API key input
-st.title("Conversational Assistant")
+st.title("Canara Bank Employee Training Assistant")
 
 # Input API Key
 api_key = st.text_input("Enter your OpenAI API key", type="password")
@@ -47,7 +47,7 @@ if api_key:
     llm = OpenAI(model=model_choice)
 
     # Embeddings section
-    st.write("## Embeddings Section")
+    st.write("## File Upload")
     Settings.embed_model = HuggingFaceEmbedding(model_name="BAAI/bge-small-en-v1.5")
     Settings.llm = OpenAI(model="gpt-4o-mini", max_tokens=300)
 
