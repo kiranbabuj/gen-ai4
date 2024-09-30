@@ -72,7 +72,7 @@ if 'question_asked' not in st.session_state:
     st.session_state.question_asked = False
 
 # Streamlit UI for OpenAI API key input
-st.title("Virtual Customer")
+st.title("Virtual Customer with Roles")
 
 # Input API Key
 api_key = st.text_input("Enter your OpenAI API key", type="password")
@@ -80,6 +80,20 @@ api_key = st.text_input("Enter your OpenAI API key", type="password")
 if api_key:
     os.environ["OPENAI_API_KEY"] = api_key
     st.success("API Key set successfully.")
+
+    # Role selection for both assistant and user
+    assistant_role = st.text_input("Enter the Assistant's Role", value="Customer Service Agent")
+    user_role = st.text_input("Enter Your Role", value="Customer")
+
+    # Template for prompting with roles
+    prompt_template = f"""
+    You are a {assistant_role}. Your job is to assist a {user_role} with their queries based on the provided document.
+    Start by summarizing the document and asking a question as if you were interacting with a {user_role}.
+    """
+
+    # Display the selected roles
+    st.write(f"**Assistant Role**: {assistant_role}")
+    st.write(f"**User Role**: {user_role}")
 
     # Choose the LLM model
     model_choice = st.selectbox("Select an LLM model", ["gpt-4o-mini"])
@@ -112,20 +126,21 @@ if api_key:
         if not st.session_state.question_asked:
             st.write("## Assistant's Initial Conversation")
             # Assistant starts the conversation based on the PDF content
-            initial_response = query_engine.query("Summarize the document and ask a customer-like question.")
+            initial_prompt = prompt_template + "\nSummarize the document and ask a customer-like question."
+            initial_response = query_engine.query(initial_prompt)
             # Add assistant's initial message to conversation history
-            st.session_state.conversation_history.append(f"Assistant: {initial_response}")
+            st.session_state.conversation_history.append(f"Assistant ({assistant_role}): {initial_response}")
             st.session_state.question_asked = True
 
             # Display the assistant's initial message
             st.write(f"Assistant: {initial_response}")
 
         # Allow the user to respond
-        user_input = st.text_input("Your response:")
+        user_input = st.text_input(f"{user_role}'s Response:")
 
         if user_input:
             # Add user input to conversation history
-            st.session_state.conversation_history.append(f"User: {user_input}")
+            st.session_state.conversation_history.append(f"{user_role}: {user_input}")
 
             # Query the document for a response based on the user's input
             document_based_response = query_engine.query(user_input)
@@ -141,7 +156,7 @@ if api_key:
             relevance_score = max(1, min(relevance_score, 10))  # Ensure the rating is between 1 and 10
 
             # Add assistant's response and follow-up question to conversation history
-            st.session_state.conversation_history.append(f"Assistant: {response_text} (Rating: {relevance_score}/10)")
+            st.session_state.conversation_history.append(f"Assistant ({assistant_role}): {response_text} (Rating: {relevance_score}/10)")
             st.session_state.question_asked = False  # Reset to allow another question
 
             # Display the assistant's response
@@ -149,7 +164,7 @@ if api_key:
 
             # Continue asking the next question
             follow_up_response = query_engine.query("Ask another relevant customer-like question.")
-            st.session_state.conversation_history.append(f"Assistant: {follow_up_response}")
+            st.session_state.conversation_history.append(f"Assistant ({assistant_role}): {follow_up_response}")
             st.write(f"Assistant: {follow_up_response}")
 
     # Display conversation history
