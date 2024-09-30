@@ -13,8 +13,6 @@ if 'user_role' not in st.session_state:
     st.session_state.user_role = "Customer"
 if 'assistant_role' not in st.session_state:
     st.session_state.assistant_role = "Bank Employee"
-if 'user_input' not in st.session_state:
-    st.session_state.user_input = ""  # Initialize user input in session state
 
 # Define prompt templates for roles
 prompt_templates = {
@@ -74,7 +72,7 @@ if api_key:
         col1, col2 = st.columns([4, 1])
 
         with col1:
-            st.session_state.user_input = st.text_input("Your response:", key="user_input")  # Set key to manage input
+            user_input = st.text_input("Your response:")  # Local variable for user input
 
         with col2:
             if st.button("Clear History"):
@@ -103,14 +101,14 @@ if api_key:
             st.write(f"{st.session_state.assistant_role}: {initial_response}")
 
         # Process user input if available
-        if st.session_state.user_input:
+        if user_input:
             # Add user input to conversation history
-            st.session_state.conversation_history.append(f"{st.session_state.user_role}: {st.session_state.user_input}")
+            st.session_state.conversation_history.append(f"{st.session_state.user_role}: {user_input}")
 
             # Check if the user is acting as a Bank Employee
             if st.session_state.user_role == "Bank Employee":
                 # Generate feedback for the user's response
-                feedback_prompt = f"Evaluate the following response as a bank employee and provide suggestions for improvement: '{st.session_state.user_input}'"
+                feedback_prompt = f"Evaluate the following response as a bank employee and provide suggestions for improvement: '{user_input}'"
                 
                 # Check available methods of llm for feedback generation
                 available_methods = dir(llm)
@@ -120,14 +118,14 @@ if api_key:
                 feedback_response = llm.generate(feedback_prompt)  # Replace with the appropriate method found
                 
                 # Score the response (example scoring logic)
-                score = len(set(st.session_state.user_input.lower().split()) & set(feedback_response.lower().split())) * 10 // len(st.session_state.user_input.split())
+                score = len(set(user_input.lower().split()) & set(feedback_response.lower().split())) * 10 // len(user_input.split())
                 score = max(1, min(score, 10))  # Ensure the rating is between 1 and 10
 
                 # Display feedback
                 st.write(f"**Feedback:** {feedback_response} (Score: {score}/10)")
 
             # Query the document for a response based on the user's input
-            document_based_response = query_engine.query(st.session_state.user_input)
+            document_based_response = query_engine.query(user_input)
 
             # Safely convert document_based_response to string
             if isinstance(document_based_response, str):
@@ -136,10 +134,10 @@ if api_key:
                 response_text = str(document_based_response)
 
             # Ensure user_input and response_text are not empty and have valid content for scoring
-            if st.session_state.user_input and response_text:
+            if user_input and response_text:
                 try:
                     # Calculate relevance score based on string similarity
-                    relevance_score = len(set(st.session_state.user_input.lower().split()) & set(response_text.lower().split())) * 10 // len(st.session_state.user_input.split())
+                    relevance_score = len(set(user_input.lower().split()) & set(response_text.lower().split())) * 10 // len(user_input.split())
                     relevance_score = max(1, min(relevance_score, 10))  # Ensure the rating is between 1 and 10
                 except ZeroDivisionError:
                     # Handle division by zero in case of empty or invalid input
@@ -155,7 +153,7 @@ if api_key:
             st.write(f"{st.session_state.assistant_role}: {response_text} (Rating: {relevance_score}/10)")
 
             # Clear user input after processing
-            st.session_state.user_input = ""  # Clear the input field
+            user_input = ""  # Clear the local input variable
 
             # Generate role-specific follow-up response using prompt templates
             follow_up_response = ""
@@ -187,4 +185,4 @@ if api_key:
             mime="text/plain",
         )
 else:
-    st.warning("Please enter your OpenAI API key to continue.")
+    st.warning("Please enter your OpenAI API key to continue
