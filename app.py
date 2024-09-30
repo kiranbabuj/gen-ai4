@@ -4,7 +4,7 @@ from llama_index.llms.openai import OpenAI
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 from llama_index.core import Settings, VectorStoreIndex, SimpleDirectoryReader
 
-# Custom CSS to mimic Apple-like design
+# Custom CSS to mimic Apple-like design with better input field visibility
 st.markdown("""
     <style>
     /* Set global font family and base styles */
@@ -26,6 +26,7 @@ st.markdown("""
         padding: 12px;
         border-radius: 8px;
         background-color: white;
+        color: black;  /* Set input text color to black */
     }
     .stFileUploader>div>div>button {
         background-color: #007aff;
