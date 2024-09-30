@@ -1,6 +1,7 @@
 import streamlit as st
 import os
 from llama_index.llms.openai import OpenAI
+from llama_index.core.llms import ChatMessage
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 from llama_index.core import Settings, VectorStoreIndex, SimpleDirectoryReader
 
@@ -84,7 +85,7 @@ if api_key:
             if st.session_state.assistant_role == "Bank Employee":
                 initial_response = "Good morning, welcome to Canara Bank. How can I assist you today?"
             elif st.session_state.assistant_role == "Customer":
-                initial_response = "Hi there! I'm a customer, looking for assistance. How can I help you today?"
+                initial_response = "Hi there! I'm a customer, looking for assistance."
 
             # Add assistant's initial message to conversation history
             st.session_state.conversation_history.append(f"{st.session_state.assistant_role}: {initial_response}")
@@ -107,37 +108,36 @@ if api_key:
             else:
                 response_text = str(document_based_response)
 
-            # Add assistant's response to conversation history
-            st.session_state.conversation_history.append(f"{st.session_state.assistant_role}: {response_text}")
+            # Ensure user_input and response_text are not empty and have valid content for scoring
+            if user_input and response_text:
+                try:
+                    # Calculate relevance score based on string similarity
+                    relevance_score = len(set(user_input.lower().split()) & set(response_text.lower().split())) * 10 // len(user_input.split())
+                    relevance_score = max(1, min(relevance_score, 10))  # Ensure the rating is between 1 and 10
+                except ZeroDivisionError:
+                    # Handle division by zero in case of empty or invalid input
+                    relevance_score = 1
+            else:
+                relevance_score = 1  # Default rating for invalid/empty input
+
+            # Add assistant's response and follow-up question to conversation history
+            st.session_state.conversation_history.append(f"{st.session_state.assistant_role}: {response_text} (Rating: {relevance_score}/10)")
             st.session_state.question_asked = False  # Reset to allow another question
 
             # Display the assistant's response
-            st.write(f"{st.session_state.assistant_role}: {response_text}")
+            st.write(f"{st.session_state.assistant_role}: {response_text} (Rating: {relevance_score}/10)")
 
-            # Only give a relevance rating if the user role is "Bank Employee"
-            if st.session_state.user_role == "Bank Employee":
-                if user_input and response_text:
-                    try:
-                        # Calculate relevance score based on string similarity
-                        relevance_score = len(set(user_input.lower().split()) & set(response_text.lower().split())) * 10 // len(user_input.split())
-                        relevance_score = max(1, min(relevance_score, 10))  # Ensure the rating is between 1 and 10
-                    except ZeroDivisionError:
-                        # Handle division by zero in case of empty or invalid input
-                        relevance_score = 1
-                else:
-                    relevance_score = 1  # Default rating for invalid/empty input
+    # Display the follow-up response here after embeddings section
+    if st.session_state.question_asked:
+        # Generate role-specific follow-up response
+        if st.session_state.assistant_role == "Bank Employee":
+            follow_up_response = query_engine.query("As a bank employee, ask the customer another banking-related question.")
+        elif st.session_state.assistant_role == "Customer":
+            follow_up_response = query_engine.query("As a customer, ask a follow-up question to the assistant.")
 
-                st.write(f"(Rating: {relevance_score}/10)")
-
-            # Generate role-specific follow-up response and place it in the input field
-            if st.session_state.assistant_role == "Bank Employee":
-                follow_up_response = query_engine.query("As a bank employee, ask the customer another banking-related question.")
-            elif st.session_state.assistant_role == "Customer":
-                follow_up_response = query_engine.query("As a customer, ask a follow-up question to the assistant.")
-            
-            # Prepopulate the user input field with the follow-up response
-            st.experimental_rerun()
-            st.text_input("Your response:", value=follow_up_response, key="follow_up_input")
+        # Add follow-up response to the conversation history
+        st.session_state.conversation_history.append(f"{st.session_state.assistant_role}: {follow_up_response}")
+        st.write(f"{st.session_state.assistant_role}: {follow_up_response}")
 
     # Display conversation history with different colors and numbering
     if st.session_state.conversation_history:
