@@ -46,7 +46,7 @@ if api_key:
     llm = OpenAI(model=model_choice)
 
     # Embeddings section
-    st.write("## Embeddings Section")
+    st.write("## File Upload Section")
     Settings.embed_model = HuggingFaceEmbedding(model_name="BAAI/bge-small-en-v1.5")
     Settings.llm = OpenAI(model="gpt-4o-mini", max_tokens=300)
 
