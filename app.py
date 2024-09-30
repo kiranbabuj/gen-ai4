@@ -14,8 +14,14 @@ if 'user_role' not in st.session_state:
 if 'assistant_role' not in st.session_state:
     st.session_state.assistant_role = "Bank Employee"
 
+# Define prompt templates for roles
+prompt_templates = {
+    "Bank Employee": "Your role is a professional banker, patiently answer all the questions by referring to the PDF document.",
+    "Customer": "You are a new customer of the bank and sometimes an existing customer of Canara Bank. Your role is to know about bank products and services. You can show all kinds of emotions and behave like a natural customer randomly."
+}
+
 # Streamlit UI for OpenAI API key input
-st.title("Canara Bank Employee Training Assistant")
+st.title("Conversational Assistant")
 
 # Input API Key
 api_key = st.text_input("Enter your OpenAI API key", type="password")
@@ -35,9 +41,11 @@ if api_key:
     # Set assistant role based on the selected user role
     st.session_state.assistant_role = "Bank Employee" if st.session_state.user_role == "Customer" else "Customer"
 
-    # Display current roles
+    # Display current roles and prompt templates
     st.write(f"**User Role:** {st.session_state.user_role}")
     st.write(f"**Assistant Role:** {st.session_state.assistant_role}")
+    st.write(f"**Prompt for User Role:** {prompt_templates[st.session_state.user_role]}")
+    st.write(f"**Prompt for Assistant Role:** {prompt_templates[st.session_state.assistant_role]}")
 
     # Choose the LLM model
     model_choice = st.selectbox("Select an LLM model", ["gpt-4o-mini"])
@@ -47,7 +55,7 @@ if api_key:
     llm = OpenAI(model=model_choice)
 
     # Embeddings section
-    st.write("## File Upload")
+    st.write("## Embeddings Section")
     Settings.embed_model = HuggingFaceEmbedding(model_name="BAAI/bge-small-en-v1.5")
     Settings.llm = OpenAI(model="gpt-4o-mini", max_tokens=300)
 
