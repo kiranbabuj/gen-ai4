@@ -85,7 +85,7 @@ if api_key:
             if st.session_state.assistant_role == "Bank Employee":
                 initial_response = "Good morning, welcome to Canara Bank. How can I assist you today?"
             elif st.session_state.assistant_role == "Customer":
-                initial_response = "Hi there! I'm a customer, looking for assistance. How can I help you today?"
+                initial_response = "Hi there! I'm a customer, looking for assistance?"
 
             # Add assistant's initial message to conversation history
             st.session_state.conversation_history.append(f"{st.session_state.assistant_role}: {initial_response}")
