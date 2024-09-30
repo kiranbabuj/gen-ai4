@@ -1,5 +1,6 @@
 import streamlit as st
 import os
+import pandas as pd
 from llama_index.llms.openai import OpenAI
 from llama_index.core.llms import ChatMessage
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
@@ -46,7 +47,7 @@ if api_key:
     llm = OpenAI(model=model_choice)
 
     # Embeddings section
-    st.write("## File Upload Section")
+    st.write("## Embeddings Section")
     Settings.embed_model = HuggingFaceEmbedding(model_name="BAAI/bge-small-en-v1.5")
     Settings.llm = OpenAI(model="gpt-4o-mini", max_tokens=300)
 
@@ -120,7 +121,7 @@ if api_key:
             else:
                 relevance_score = 1  # Default rating for invalid/empty input
 
-            # Add assistant's response and follow-up question to conversation history
+            # Add assistant's response to conversation history
             st.session_state.conversation_history.append(f"{st.session_state.assistant_role}: {response_text} (Rating: {relevance_score}/10)")
             st.session_state.question_asked = False  # Reset to allow another question
 
@@ -139,14 +140,30 @@ if api_key:
         st.session_state.conversation_history.append(f"{st.session_state.assistant_role}: {follow_up_response}")
         st.write(f"{st.session_state.assistant_role}: {follow_up_response}")
 
-    # Display conversation history with different colors and numbering
+    # Display conversation history in a tabular format
     if st.session_state.conversation_history:
         st.write("## Conversation History")
-        for idx, entry in enumerate(st.session_state.conversation_history, start=1):
+
+        # Prepare data for the DataFrame
+        customer_messages = []
+        bank_employee_messages = []
+
+        for entry in st.session_state.conversation_history:
             if entry.startswith(st.session_state.user_role):
-                st.markdown(f"<div style='color:blue;'>**{idx}. {entry}**</div>", unsafe_allow_html=True)
+                customer_messages.append(entry.replace(f"{st.session_state.user_role}: ", ""))
+                bank_employee_messages.append("")  # Empty entry for the bank employee column
             else:
-                st.markdown(f"<div style='color:green;'>**{idx}. {entry}**</div>", unsafe_allow_html=True)
+                bank_employee_messages.append(entry.replace(f"{st.session_state.assistant_role}: ", ""))
+                customer_messages.append("")  # Empty entry for the customer column
+
+        # Create a DataFrame
+        conversation_df = pd.DataFrame({
+            st.session_state.user_role: customer_messages,
+            st.session_state.assistant_role: bank_employee_messages
+        })
+
+        # Display the DataFrame as a table
+        st.table(conversation_df)
 
     # Download conversation history as a text file
     if st.session_state.conversation_history:
