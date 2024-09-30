@@ -109,7 +109,9 @@ if api_key:
             if st.session_state.user_role == "Bank Employee":
                 # Generate feedback for the user's response
                 feedback_prompt = f"Evaluate the following response as a bank employee and provide suggestions for improvement: '{user_input}'"
-                feedback_response = llm.query(feedback_prompt)  # Use the LLM to generate feedback
+                
+                # Adjust this line according to your LLM library's correct method
+                feedback_response = llm.call(feedback_prompt)  # Use the correct method to generate feedback
                 
                 # Score the response (example scoring logic)
                 score = len(set(user_input.lower().split()) & set(feedback_response.lower().split())) * 10 // len(user_input.split())
@@ -117,7 +119,7 @@ if api_key:
 
                 # Display feedback
                 st.write(f"**Feedback:** {feedback_response} (Score: {score}/10)")
-                
+
             # Query the document for a response based on the user's input
             document_based_response = query_engine.query(user_input)
 
