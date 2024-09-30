@@ -1,6 +1,5 @@
 import streamlit as st
 import os
-import random
 from llama_index.llms.openai import OpenAI
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 from llama_index.core import Settings, VectorStoreIndex, SimpleDirectoryReader
@@ -15,17 +14,10 @@ if 'user_role' not in st.session_state:
 if 'assistant_role' not in st.session_state:
     st.session_state.assistant_role = "Bank Employee"
 
-# Define improved prompt templates for roles
+# Define prompt templates for roles
 prompt_templates = {
-    "Bank Employee": (
-        "You are a professional and knowledgeable bank employee at Canara Bank. "
-        "You provide detailed, accurate, and patient responses to customer questions. "
-        "Always refer to relevant sections of the provided PDF document when answering queries about bank products, services, or policies."
-    ),
-    "Customer": (
-        "You are a new or existing customer of Canara Bank. You ask questions about the bank's products and services. "
-        "Your emotions and tone may vary—ranging from curiosity to frustration—depending on the context of your interaction."
-    )
+    "Bank Employee": "Your role is a professional banker, patiently answer all the questions by referring to the PDF document.",
+    "Customer": "You are a new customer of the bank and sometimes an existing customer of Canara Bank. Your role is to know about bank products and services. You can show all kinds of emotions and behave like a natural customer randomly."
 }
 
 # Streamlit UI for OpenAI API key input
@@ -90,15 +82,16 @@ if api_key:
                 st.session_state.user_role = "Customer"  # Reset to default role
                 st.session_state.assistant_role = "Bank Employee"  # Reset to default role
 
-        # Automatically initiate the conversation with initial role-based prompt
+        # Automatically query the document to initiate the conversation
         if not st.session_state.question_asked:
             st.write("## Assistant's Initial Conversation")
 
             # Generate role-specific initial response using prompt templates
+            initial_response = ""
             if st.session_state.assistant_role == "Bank Employee":
-                initial_response = "Good morning! Welcome to Canara Bank. How can I assist you today with our banking products or services?"
-            else:
-                initial_response = "Hi! I’m looking to understand more about Canara Bank's savings account options. Can you help?"
+                initial_response = "Good morning, welcome to Canara Bank. How can I assist you today?"
+            elif st.session_state.assistant_role == "Customer":
+                initial_response = "Hi there! I'm a customer, looking for assistance."
 
             # Add assistant's initial message to conversation history
             st.session_state.conversation_history.append(f"{st.session_state.assistant_role}: {initial_response}")
@@ -113,17 +106,25 @@ if api_key:
             st.session_state.conversation_history.append(f"{st.session_state.user_role}: {user_input}")
 
             # Query the document for a response based on the user's input
-            document_based_response = query_engine.query(
-                f"Based on the customer input: {user_input}, check if relevant sections of the document exist. "
-                "If yes, provide a detailed response. If no, respond based on your expertise."
-            )
+            document_based_response = query_engine.query(user_input)
 
             # Safely convert document_based_response to string
-            response_text = str(document_based_response) if document_based_response else "Sorry, I couldn't find relevant information."
+            if isinstance(document_based_response, str):
+                response_text = document_based_response
+            else:
+                response_text = str(document_based_response)
 
-            # Calculate a relevance score based on string similarity
-            relevance_score = len(set(user_input.lower().split()) & set(response_text.lower().split())) * 10 // len(user_input.split())
-            relevance_score = max(1, min(relevance_score, 10))  # Ensure the rating is between 1 and 10
+            # Ensure user_input and response_text are not empty and have valid content for scoring
+            if user_input and response_text:
+                try:
+                    # Calculate relevance score based on string similarity
+                    relevance_score = len(set(user_input.lower().split()) & set(response_text.lower().split())) * 10 // len(user_input.split())
+                    relevance_score = max(1, min(relevance_score, 10))  # Ensure the rating is between 1 and 10
+                except ZeroDivisionError:
+                    # Handle division by zero in case of empty or invalid input
+                    relevance_score = 1
+            else:
+                relevance_score = 1  # Default rating for invalid/empty input
 
             # Add assistant's response and follow-up question to conversation history
             st.session_state.conversation_history.append(f"{st.session_state.assistant_role}: {response_text} (Rating: {relevance_score}/10)")
@@ -137,9 +138,7 @@ if api_key:
             if st.session_state.assistant_role == "Bank Employee":
                 follow_up_response = query_engine.query("As a bank employee, ask the customer another banking-related question.")
             elif st.session_state.assistant_role == "Customer":
-                emotions = ["curious", "frustrated", "confused"]
-                emotion = random.choice(emotions)
-                follow_up_response = query_engine.query(f"As a {emotion} customer, ask a follow-up question.")
+                follow_up_response = query_engine.query("As a customer, ask a follow-up question to the assistant.")
 
             # Add follow-up response to the conversation history
             st.session_state.conversation_history.append(f"{st.session_state.assistant_role}: {follow_up_response}")
