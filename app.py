@@ -105,25 +105,6 @@ if api_key:
             # Add user input to conversation history
             st.session_state.conversation_history.append(f"{st.session_state.user_role}: {user_input}")
 
-            # Check if the user is acting as a Bank Employee
-            if st.session_state.user_role == "Bank Employee":
-                # Generate feedback for the user's response
-                feedback_prompt = f"Evaluate the following response as a bank employee and provide suggestions for improvement: '{user_input}'"
-                
-                # Check available methods of llm for feedback generation
-                available_methods = dir(llm)
-                st.write(f"Available methods for llm: {available_methods}")  # Display available methods
-                
-                # Use the correct method to generate feedback based on available methods
-                feedback_response = llm.generate(feedback_prompt)  # Replace with the appropriate method found
-                
-                # Score the response (example scoring logic)
-                score = len(set(user_input.lower().split()) & set(feedback_response.lower().split())) * 10 // len(user_input.split())
-                score = max(1, min(score, 10))  # Ensure the rating is between 1 and 10
-
-                # Display feedback
-                st.write(f"**Feedback:** {feedback_response} (Score: {score}/10)")
-
             # Query the document for a response based on the user's input
             document_based_response = query_engine.query(user_input)
 
