@@ -158,4 +158,4 @@ if api_key:
                 mime="text/plain",
             )
 else:
-    st.warning("Please enter your OpenAI API key
+    st.warning("Please enter your OpenAI API key.")
