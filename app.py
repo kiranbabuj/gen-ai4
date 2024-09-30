@@ -14,7 +14,7 @@ if 'awaiting_user_response' not in st.session_state:
     st.session_state.awaiting_user_response = False  # Control flow for question-response cycle
 
 # Streamlit UI for OpenAI API key input
-st.title("Virtual Customer")
+st.title("Virtual Customer - Training Assistant")
 
 # Input API Key
 api_key = st.text_input("Enter your OpenAI API key", type="password")
@@ -61,9 +61,8 @@ if api_key:
             st.session_state.assistant_followup_question = initial_response
             st.session_state.awaiting_user_response = True  # Start expecting the user's input
 
-        # Display the assistant's current question or follow-up question
-        if st.session_state.assistant_followup_question:
-            st.write(f"Assistant: {st.session_state.assistant_followup_question}")
+        # Display the assistant's current question or follow-up question at the top
+        st.markdown(f"<h4 style='color: blue;'>Assistant: {st.session_state.assistant_followup_question}</h4>", unsafe_allow_html=True)
 
         # Allow the user to respond
         user_input = st.text_input("Your response:")
@@ -85,18 +84,17 @@ if api_key:
             st.session_state.conversation_history.append(f"Assistant: {user_query_response} ({rating})")
             st.session_state.assistant_followup_question = followup_question
 
-            # Display assistant's follow-up question
-            st.write(f"Assistant: {user_query_response} ({rating})")
-            st.write(f"Assistant (Next Question): {followup_question}")
-
             # Continue the cycle
             st.session_state.awaiting_user_response = True
 
-    # Display conversation history
-    if st.session_state.conversation_history:
-        st.write("## Conversation History")
-        for entry in st.session_state.conversation_history:
-            st.write(entry)
+        # Display conversation history (latest messages on top)
+        if st.session_state.conversation_history:
+            st.write("## Conversation History")
+            for entry in reversed(st.session_state.conversation_history):
+                if entry.startswith("Assistant:"):
+                    st.markdown(f"<div style='color: blue; background-color: #e6f7ff; padding: 8px; border-radius: 8px;'>{entry}</div>", unsafe_allow_html=True)
+                else:
+                    st.markdown(f"<div style='color: green; background-color: #e8ffe8; padding: 8px; border-radius: 8px;'>{entry}</div>", unsafe_allow_html=True)
 
     # Download conversation history as a text file
     if st.session_state.conversation_history:
@@ -109,4 +107,3 @@ if api_key:
         )
 else:
     st.warning("Please enter your OpenAI API key to continue.")
-
