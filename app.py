@@ -109,24 +109,13 @@ if api_key:
             else:
                 response_text = str(document_based_response)
 
-            # Ensure user_input and response_text are not empty and have valid content for scoring
-            if user_input and response_text:
-                try:
-                    # Calculate relevance score based on string similarity
-                    relevance_score = len(set(user_input.lower().split()) & set(response_text.lower().split())) * 10 // len(user_input.split())
-                    relevance_score = max(1, min(relevance_score, 10))  # Ensure the rating is between 1 and 10
-                except ZeroDivisionError:
-                    # Handle division by zero in case of empty or invalid input
-                    relevance_score = 1
-            else:
-                relevance_score = 1  # Default rating for invalid/empty input
-
             # Add assistant's response to conversation history
-            st.session_state.conversation_history.append(f"{st.session_state.assistant_role}: {response_text} (Rating: {relevance_score}/10)")
+            st.session_state.conversation_history.append(f"{st.session_state.assistant_role}: {response_text}")
+
             st.session_state.question_asked = False  # Reset to allow another question
 
             # Display the assistant's response
-            st.write(f"{st.session_state.assistant_role}: {response_text} (Rating: {relevance_score}/10)")
+            st.write(f"{st.session_state.assistant_role}: {response_text}")
 
     # Display the follow-up response here after embeddings section
     if st.session_state.question_asked:
@@ -140,7 +129,7 @@ if api_key:
         st.session_state.conversation_history.append(f"{st.session_state.assistant_role}: {follow_up_response}")
         st.write(f"{st.session_state.assistant_role}: {follow_up_response}")
 
-    # Display conversation history in a tabular format
+    # Display conversation history in a side-by-side format
     if st.session_state.conversation_history:
         st.write("## Conversation History")
 
@@ -148,13 +137,29 @@ if api_key:
         customer_messages = []
         bank_employee_messages = []
 
+        # Track the last user role
+        last_role = None
+        
         for entry in st.session_state.conversation_history:
-            if entry.startswith(st.session_state.user_role):
-                customer_messages.append(entry.replace(f"{st.session_state.user_role}: ", ""))
-                bank_employee_messages.append("")  # Empty entry for the bank employee column
+            role, message = entry.split(": ", 1)
+
+            if role == st.session_state.user_role:
+                # If the role is the same as the last one, append to the last message
+                if last_role == st.session_state.user_role:
+                    customer_messages[-1] += f" | {message.strip()}"
+                else:
+                    customer_messages.append(message.strip())
+                    bank_employee_messages.append("")  # Empty entry for the bank employee column
             else:
-                bank_employee_messages.append(entry.replace(f"{st.session_state.assistant_role}: ", ""))
-                customer_messages.append("")  # Empty entry for the customer column
+                # If the role is the same as the last one, append to the last message
+                if last_role == st.session_state.assistant_role:
+                    bank_employee_messages[-1] += f" | {message.strip()}"
+                else:
+                    bank_employee_messages.append(message.strip())
+                    customer_messages.append("")  # Empty entry for the customer column
+
+            # Update the last role
+            last_role = role
 
         # Create a DataFrame
         conversation_df = pd.DataFrame({
