@@ -41,12 +41,6 @@ if api_key:
     # Set assistant role based on the selected user role
     st.session_state.assistant_role = "Bank Employee" if st.session_state.user_role == "Customer" else "Customer"
 
-    # Display current roles and prompt templates
-    st.write(f"**User Role:** {st.session_state.user_role}")
-    st.write(f"**Assistant Role:** {st.session_state.assistant_role}")
-    st.write(f"**Prompt for User Role:** {prompt_templates[st.session_state.user_role]}")
-    st.write(f"**Prompt for Assistant Role:** {prompt_templates[st.session_state.assistant_role]}")
-
     # Choose the LLM model
     model_choice = st.selectbox("Select an LLM model", ["gpt-4o-mini"])
 
@@ -92,7 +86,8 @@ if api_key:
         if not st.session_state.question_asked:
             st.write("## Assistant's Initial Conversation")
 
-            # Generate role-specific initial response
+            # Generate role-specific initial response using prompt templates
+            initial_response = ""
             if st.session_state.assistant_role == "Bank Employee":
                 initial_response = "Good morning, welcome to Canara Bank. How can I assist you today?"
             elif st.session_state.assistant_role == "Customer":
@@ -138,7 +133,8 @@ if api_key:
             # Display the assistant's response
             st.write(f"{st.session_state.assistant_role}: {response_text} (Rating: {relevance_score}/10)")
 
-            # Generate role-specific follow-up response
+            # Generate role-specific follow-up response using prompt templates
+            follow_up_response = ""
             if st.session_state.assistant_role == "Bank Employee":
                 follow_up_response = query_engine.query("As a bank employee, ask the customer another banking-related question.")
             elif st.session_state.assistant_role == "Customer":
