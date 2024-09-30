@@ -20,7 +20,7 @@ if api_key:
     st.success("API Key set successfully.")
 
     # Choose the LLM model
-    model_choice = st.selectbox("Select an LLM model", ["gpt-3.5-turbo", "gpt-4o-mini"])
+    model_choice = st.selectbox("Select an LLM model", ["gpt-4o-mini"])
 
     # Initialize the LLM
     st.write("Initializing LLM model...")
