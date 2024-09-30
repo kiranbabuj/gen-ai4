@@ -110,15 +110,18 @@ if uploaded_file is not None:
             # The Bank Employee will evaluate the response based on the document
             document_based_response = query_engine.query(user_input)
             response_text = document_based_response if isinstance(document_based_response, str) else str(document_based_response)
+
+            # Evaluate the response for improvement
+            feedback_text = evaluate_response(user_input, response_text)
+            st.session_state.conversation_history.append(f"{st.session_state.assistant_role}: {response_text} (Feedback: {feedback_text})")
+        
         else:
             # Generate LLM response for other roles
             response_text = llm.chat([
                 ChatMessage(role="system", content="You are a finance domain expert."),
                 ChatMessage(role="user", content=user_input),
             ])
-
-        # Add assistant's response to conversation history
-        st.session_state.conversation_history.append(f"{st.session_state.assistant_role}: {response_text}")
+            st.session_state.conversation_history.append(f"{st.session_state.assistant_role}: {response_text}")
 
         st.session_state.question_asked = False  # Reset to allow another question
 
@@ -189,3 +192,18 @@ if uploaded_file is not None:
         )
 else:
     st.warning("Please enter your OpenAI API key to continue.")
+
+def evaluate_response(user_input, response_text):
+    """
+    Evaluate the response based on the user input and provide feedback.
+    """
+    # For training, we will check if the response includes key terms.
+    key_terms = ['bank', 'loan', 'account', 'deposit', 'withdrawal', 'interest rate']
+    missing_terms = [term for term in key_terms if term not in response_text.lower()]
+
+    if missing_terms:
+        feedback = f"Missing key terms: {', '.join(missing_terms)}. Consider including them."
+    else:
+        feedback = "Great response! It covers all necessary points."
+
+    return feedback
