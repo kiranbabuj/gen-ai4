@@ -6,6 +6,22 @@ from llama_index.core.llms import ChatMessage
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 from llama_index.core import Settings, VectorStoreIndex, SimpleDirectoryReader
 
+# Define the evaluate_response function before using it
+def evaluate_response(user_input, response_text):
+    """
+    Evaluate the response based on the user input and provide feedback.
+    """
+    # For training, we will check if the response includes key terms.
+    key_terms = ['bank', 'loan', 'account', 'deposit', 'withdrawal', 'interest rate']
+    missing_terms = [term for term in key_terms if term not in response_text.lower()]
+
+    if missing_terms:
+        feedback = f"Missing key terms: {', '.join(missing_terms)}. Consider including them."
+    else:
+        feedback = "Great response! It covers all necessary points."
+
+    return feedback
+
 # Initialize conversation history and roles in session state
 if 'conversation_history' not in st.session_state:
     st.session_state.conversation_history = []
@@ -192,18 +208,3 @@ if uploaded_file is not None:
         )
 else:
     st.warning("Please enter your OpenAI API key to continue.")
-
-def evaluate_response(user_input, response_text):
-    """
-    Evaluate the response based on the user input and provide feedback.
-    """
-    # For training, we will check if the response includes key terms.
-    key_terms = ['bank', 'loan', 'account', 'deposit', 'withdrawal', 'interest rate']
-    missing_terms = [term for term in key_terms if term not in response_text.lower()]
-
-    if missing_terms:
-        feedback = f"Missing key terms: {', '.join(missing_terms)}. Consider including them."
-    else:
-        feedback = "Great response! It covers all necessary points."
-
-    return feedback
