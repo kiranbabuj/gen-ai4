@@ -13,11 +13,13 @@ if 'user_role' not in st.session_state:
     st.session_state.user_role = "Customer"
 if 'assistant_role' not in st.session_state:
     st.session_state.assistant_role = "Bank Employee"
+if 'user_input' not in st.session_state:
+    st.session_state.user_input = ""
 
-# Define prompt templates for roles
-prompt_templates = {
+# Prompt templates for roles
+PROMPT_TEMPLATES = {
     "Bank Employee": "Your role is a professional banker, patiently answer all the questions by referring to the PDF document.",
-    "Customer": "You are a new customer of the bank and sometimes an existing customer of Canara Bank. Your role is to know about bank products and services. You can show all kinds of emotions and behave like a natural customer randomly."
+    "Customer": "You are a new customer to the bank and sometimes you are an existing customer of Canara Bank. Your role is to know about bank products and services. You can show all kinds of emotions and behave like a natural customer randomly."
 }
 
 # Streamlit UI for OpenAI API key input
@@ -26,20 +28,26 @@ st.title("Conversational Assistant")
 # Input API Key
 api_key = st.text_input("Enter your OpenAI API key", type="password")
 
-# Store API key in session state
 if api_key:
     os.environ["OPENAI_API_KEY"] = api_key
     st.success("API Key set successfully.")
 
-    # Select user role using a dropdown menu
+    # Select roles using dropdown menus
     st.session_state.user_role = st.selectbox(
-        "Select your role:",
+        "Select user role:",
         options=["Customer", "Bank Employee"],
-        index=["Customer", "Bank Employee"].index(st.session_state.user_role)  # Set to current user role
+        index=0  # Default to "Customer"
+    )
+    
+    st.session_state.assistant_role = st.selectbox(
+        "Select assistant role:",
+        options=["Bank Employee", "Customer"],
+        index=0  # Default to "Bank Employee"
     )
 
-    # Set assistant role based on the selected user role
-    st.session_state.assistant_role = "Bank Employee" if st.session_state.user_role == "Customer" else "Customer"
+    # Ensure roles are not the same
+    if st.session_state.user_role == st.session_state.assistant_role:
+        st.warning("User and Assistant roles cannot be the same. Please select different roles.")
 
     # Choose the LLM model
     model_choice = st.selectbox("Select an LLM model", ["gpt-4o-mini"])
@@ -72,22 +80,21 @@ if api_key:
         col1, col2 = st.columns([4, 1])
 
         with col1:
-            user_input = st.text_input("Your response:")  # Local variable for user input
+            # Capture user input
+            user_input = st.text_input("Your response:", key="user_input")  # Use session state key
 
         with col2:
             if st.button("Clear History"):
-                # Clear conversation history and reset flags except for the API key
+                # Clear conversation history and reset flags
                 st.session_state.conversation_history = []
                 st.session_state.question_asked = False
-                st.session_state.user_role = "Customer"  # Reset to default role
-                st.session_state.assistant_role = "Bank Employee"  # Reset to default role
+                st.session_state.user_input = ""  # Clear the user input field
 
         # Automatically query the document to initiate the conversation
         if not st.session_state.question_asked:
             st.write("## Assistant's Initial Conversation")
 
-            # Generate role-specific initial response using prompt templates
-            initial_response = ""
+            # Generate role-specific initial response
             if st.session_state.assistant_role == "Bank Employee":
                 initial_response = "Good morning, welcome to Canara Bank. How can I assist you today?"
             elif st.session_state.assistant_role == "Customer":
@@ -104,25 +111,6 @@ if api_key:
         if user_input:
             # Add user input to conversation history
             st.session_state.conversation_history.append(f"{st.session_state.user_role}: {user_input}")
-
-            # Check if the user is acting as a Bank Employee
-            if st.session_state.user_role == "Bank Employee":
-                # Generate feedback for the user's response
-                feedback_prompt = f"Evaluate the following response as a bank employee and provide suggestions for improvement: '{user_input}'"
-                
-                # Check available methods of llm for feedback generation
-                available_methods = dir(llm)
-                st.write(f"Available methods for llm: {available_methods}")  # Display available methods
-                
-                # Use the correct method to generate feedback based on available methods
-                feedback_response = llm.generate(feedback_prompt)  # Replace with the appropriate method found
-                
-                # Score the response (example scoring logic)
-                score = len(set(user_input.lower().split()) & set(feedback_response.lower().split())) * 10 // len(user_input.split())
-                score = max(1, min(score, 10))  # Ensure the rating is between 1 and 10
-
-                # Display feedback
-                st.write(f"**Feedback:** {feedback_response} (Score: {score}/10)")
 
             # Query the document for a response based on the user's input
             document_based_response = query_engine.query(user_input)
@@ -147,16 +135,21 @@ if api_key:
 
             # Add assistant's response and follow-up question to conversation history
             st.session_state.conversation_history.append(f"{st.session_state.assistant_role}: {response_text} (Rating: {relevance_score}/10)")
-            st.session_state.question_asked = False  # Reset to allow another question
+
+            # If the user is a Bank Employee, generate feedback for their response
+            if st.session_state.user_role == "Bank Employee":
+                feedback_prompt = f"Evaluate the following response from a bank employee and suggest improvements: {user_input}"
+                feedback_response = llm.query(feedback_prompt)  # Use the correct method to generate feedback
+                st.session_state.conversation_history.append(f"Feedback: {feedback_response}")
+                st.write(f"Feedback: {feedback_response}")
+
+            # Clear user input after processing
+            st.session_state.user_input = ""  # Clear the user input field
 
             # Display the assistant's response
             st.write(f"{st.session_state.assistant_role}: {response_text} (Rating: {relevance_score}/10)")
 
-            # Clear user input after processing
-            user_input = ""  # Clear the local input variable
-
-            # Generate role-specific follow-up response using prompt templates
-            follow_up_response = ""
+            # Generate role-specific follow-up response
             if st.session_state.assistant_role == "Bank Employee":
                 follow_up_response = query_engine.query("As a bank employee, ask the customer another banking-related question.")
             elif st.session_state.assistant_role == "Customer":
