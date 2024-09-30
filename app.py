@@ -21,10 +21,6 @@ st.title("Conversational Assistant")
 # Input API Key
 api_key = st.text_input("Enter your OpenAI API key", type="password")
 
-# Clear Conversation History button
-if st.button("Clear History"):
-    st.session_state.conversation_history = []
-
 if api_key:
     os.environ["OPENAI_API_KEY"] = api_key
     st.success("API Key set successfully.")
@@ -60,6 +56,18 @@ if api_key:
         # Initialize the query engine
         query_engine = index.as_query_engine()
 
+        # Layout for user input and clear history button side by side
+        col1, col2 = st.columns([4, 1])
+
+        with col1:
+            user_input = st.text_input("Your response:")
+
+        with col2:
+            if st.button("Clear History"):
+                # Clear conversation history and reset flags
+                st.session_state.conversation_history = []
+                st.session_state.question_asked = False
+
         # Automatically query the document to initiate the conversation
         if not st.session_state.question_asked:
             st.write("## Assistant's Initial Conversation")
@@ -72,9 +80,7 @@ if api_key:
             # Display the assistant's initial message
             st.write(f"{st.session_state.assistant_role}: {initial_response}")
 
-        # Allow the user to respond
-        user_input = st.text_input("Your response:")
-
+        # Process user input if available
         if user_input:
             # Add user input to conversation history
             st.session_state.conversation_history.append(f"{st.session_state.user_role}: {user_input}")
