@@ -83,99 +83,19 @@ if api_key:
             # Capture user input
             user_input = st.text_input("Your response:", key="user_input")  # Use session state key
 
-        with col2:
-            if st.button("Clear History"):
-                # Clear conversation history and reset flags
-                st.session_state.conversation_history = []
-                st.session_state.question_asked = False
-                st.session_state.user_input = ""  # Clear the user input field
+            # If the user has entered a response
+            if user_input:
+                # Add user input to conversation history
+                st.session_state.conversation_history.append(f"{st.session_state.user_role}: {user_input}")
 
-        # Automatically query the document to initiate the conversation
-        if not st.session_state.question_asked:
-            st.write("## Assistant's Initial Conversation")
+                # Process the user input
+                # Query the document and generate a response
+                document_based_response = query_engine.query(user_input)
 
-            # Generate role-specific initial response
-            if st.session_state.assistant_role == "Bank Employee":
-                initial_response = "Good morning, welcome to Canara Bank. How can I assist you today?"
-            elif st.session_state.assistant_role == "Customer":
-                initial_response = "Hi there! I'm a customer, looking for assistance."
+                # Handling response safely
+                response_text = str(document_based_response) if document_based_response else "No response generated."
 
-            # Add assistant's initial message to conversation history
-            st.session_state.conversation_history.append(f"{st.session_state.assistant_role}: {initial_response}")
-            st.session_state.question_asked = True
-
-            # Display the assistant's initial message
-            st.write(f"{st.session_state.assistant_role}: {initial_response}")
-
-        # Process user input if available
-        if user_input:
-            # Add user input to conversation history
-            st.session_state.conversation_history.append(f"{st.session_state.user_role}: {user_input}")
-
-            # Query the document for a response based on the user's input
-            document_based_response = query_engine.query(user_input)
-
-            # Safely convert document_based_response to string
-            if isinstance(document_based_response, str):
-                response_text = document_based_response
-            else:
-                response_text = str(document_based_response)
-
-            # Ensure user_input and response_text are not empty and have valid content for scoring
-            if user_input and response_text:
-                try:
-                    # Calculate relevance score based on string similarity
-                    relevance_score = len(set(user_input.lower().split()) & set(response_text.lower().split())) * 10 // len(user_input.split())
-                    relevance_score = max(1, min(relevance_score, 10))  # Ensure the rating is between 1 and 10
-                except ZeroDivisionError:
-                    # Handle division by zero in case of empty or invalid input
-                    relevance_score = 1
-            else:
-                relevance_score = 1  # Default rating for invalid/empty input
-
-            # Add assistant's response and follow-up question to conversation history
-            st.session_state.conversation_history.append(f"{st.session_state.assistant_role}: {response_text} (Rating: {relevance_score}/10)")
-
-            # If the user is a Bank Employee, generate feedback for their response
-            if st.session_state.user_role == "Bank Employee":
-                feedback_prompt = f"Evaluate the following response from a bank employee and suggest improvements: {user_input}"
-                feedback_response = llm.query(feedback_prompt)  # Use the correct method to generate feedback
-                st.session_state.conversation_history.append(f"Feedback: {feedback_response}")
-                st.write(f"Feedback: {feedback_response}")
-
-            # Clear user input after processing
-            st.session_state.user_input = ""  # Clear the user input field
-
-            # Display the assistant's response
-            st.write(f"{st.session_state.assistant_role}: {response_text} (Rating: {relevance_score}/10)")
-
-            # Generate role-specific follow-up response
-            if st.session_state.assistant_role == "Bank Employee":
-                follow_up_response = query_engine.query("As a bank employee, ask the customer another banking-related question.")
-            elif st.session_state.assistant_role == "Customer":
-                follow_up_response = query_engine.query("As a customer, ask a follow-up question to the assistant.")
-
-            # Add follow-up response to the conversation history
-            st.session_state.conversation_history.append(f"{st.session_state.assistant_role}: {follow_up_response}")
-            st.write(f"{st.session_state.assistant_role}: {follow_up_response}")
-
-    # Display conversation history with different colors and numbering
-    if st.session_state.conversation_history:
-        st.write("## Conversation History")
-        for idx, entry in enumerate(st.session_state.conversation_history, start=1):
-            if entry.startswith(st.session_state.user_role):
-                st.markdown(f"<div style='color:blue;'>**{idx}. {entry}**</div>", unsafe_allow_html=True)
-            else:
-                st.markdown(f"<div style='color:green;'>**{idx}. {entry}**</div>", unsafe_allow_html=True)
-
-    # Download conversation history as a text file
-    if st.session_state.conversation_history:
-        conversation_text = "\n".join(st.session_state.conversation_history)
-        st.download_button(
-            label="Download Conversation History",
-            data=conversation_text,
-            file_name="conversation_history.txt",
-            mime="text/plain",
-        )
-else:
-    st.warning("Please enter your OpenAI API key to continue.")
+                # If the user is a Bank Employee, generate feedback for their response
+                if st.session_state.user_role == "Bank Employee":
+                    feedback_prompt = f"Evaluate the following response from a bank employee and suggest improvements: {user_input}"
+                    feedb
