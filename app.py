@@ -15,107 +15,115 @@ if 'user_role' not in st.session_state:
     st.session_state.user_role = "Customer"
 if 'assistant_role' not in st.session_state:
     st.session_state.assistant_role = "Bank Employee"
+if 'api_key' not in st.session_state:
+    st.session_state.api_key = None  # Initialize API key in session state
 
 # Streamlit UI for OpenAI API key input
 st.title("Conversational Assistant")
 
-# Input API Key
-api_key = st.text_input("Enter your OpenAI API key", type="password")
+# Input API Key (store in session state)
+if st.session_state.api_key is None:  # Only show input if the API key is not set
+    api_key = st.text_input("Enter your OpenAI API key", type="password")
+    if api_key:
+        st.session_state.api_key = api_key  # Store API key in session state
+        os.environ["OPENAI_API_KEY"] = api_key
+        st.success("API Key set successfully.")
+else:
+    st.success("API Key is already set.")
 
-if api_key:
-    os.environ["OPENAI_API_KEY"] = api_key
-    st.success("API Key set successfully.")
+# Select roles using a dropdown menu
+st.session_state.user_role = st.selectbox(
+    "Select user role:",
+    options=["Customer", "Bank Employee"],
+    index=0  # Default to "Customer"
+)
 
-    # Select roles using a dropdown menu
-    st.session_state.user_role = st.selectbox(
-        "Select user role:",
-        options=["Customer", "Bank Employee"],
-        index=0  # Default to "Customer"
-    )
-    
-    st.session_state.assistant_role = st.selectbox(
-        "Select assistant role:",
-        options=["Bank Employee", "Customer"],
-        index=0  # Default to "Bank Employee"
-    )
+st.session_state.assistant_role = st.selectbox(
+    "Select assistant role:",
+    options=["Bank Employee", "Customer"],
+    index=0  # Default to "Bank Employee"
+)
 
-    # Choose the LLM model
-    model_choice = st.selectbox("Select an LLM model", ["gpt-4o-mini"])
+# Choose the LLM model
+model_choice = st.selectbox("Select an LLM model", ["gpt-4o-mini"])
 
-    # Initialize the LLM
-    st.write("Initializing LLM model...")
-    llm = OpenAI(model=model_choice)
+# Initialize the LLM
+st.write("Initializing LLM model...")
+llm = OpenAI(model=model_choice)
 
-    # Embeddings section
-    st.write("## Embeddings Section")
-    Settings.embed_model = HuggingFaceEmbedding(model_name="BAAI/bge-small-en-v1.5")
-    Settings.llm = OpenAI(model="gpt-4o-mini", max_tokens=300)
+# Embeddings section
+st.write("## Embeddings Section")
+Settings.embed_model = HuggingFaceEmbedding(model_name="BAAI/bge-small-en-v1.5")
+Settings.llm = OpenAI(model="gpt-4o-mini", max_tokens=300)
 
-    # Document loading and querying
-    uploaded_file = st.file_uploader("Upload a PDF file", type=["pdf"])
+# Document loading and querying
+uploaded_file = st.file_uploader("Upload a PDF file", type=["pdf"])
 
-    if uploaded_file is not None:
-        # Save the uploaded PDF locally
-        with open("uploaded_file.pdf", "wb") as f:
-            f.write(uploaded_file.getbuffer())
+if uploaded_file is not None:
+    # Save the uploaded PDF locally
+    with open("uploaded_file.pdf", "wb") as f:
+        f.write(uploaded_file.getbuffer())
 
-        # Load documents and create an index
-        documents = SimpleDirectoryReader("./").load_data()
-        index = VectorStoreIndex.from_documents(documents)
+    # Load documents and create an index
+    documents = SimpleDirectoryReader("./").load_data()
+    index = VectorStoreIndex.from_documents(documents)
 
-        # Initialize the query engine
-        query_engine = index.as_query_engine()
+    # Initialize the query engine
+    query_engine = index.as_query_engine()
 
-        # Layout for user input and clear history button side by side
-        col1, col2 = st.columns([4, 1])
+    # Layout for user input and clear history button side by side
+    col1, col2 = st.columns([4, 1])
 
-        with col1:
-            user_input = st.text_input("Your response:")
+    with col1:
+        user_input = st.text_input("Your response:")
 
-        with col2:
-            if st.button("Clear History"):
-                # Clear conversation history and reset flags
-                st.session_state.conversation_history = []
-                st.session_state.question_asked = False
+    with col2:
+        if st.button("Clear History"):
+            # Clear conversation history and reset flags
+            st.session_state.conversation_history = []
+            st.session_state.question_asked = False
 
-        # Automatically query the document to initiate the conversation
-        if not st.session_state.question_asked:
-            st.write("## Assistant's Initial Conversation")
+    # Automatically query the document to initiate the conversation
+    if not st.session_state.question_asked:
+        st.write("## Assistant's Initial Conversation")
 
-            # Generate role-specific initial response
-            if st.session_state.assistant_role == "Bank Employee":
-                initial_response = "Good morning, welcome to Canara Bank. How can I assist you today?"
-            elif st.session_state.assistant_role == "Customer":
-                initial_response = "Hi there! I'm a customer, looking for assistance."
+        # Generate role-specific initial response
+        if st.session_state.assistant_role == "Bank Employee":
+            initial_response = "Good morning, welcome to Canara Bank. How can I assist you today?"
+        elif st.session_state.assistant_role == "Customer":
+            initial_response = "Hi there! I'm a customer, looking for assistance."
 
-            # Add assistant's initial message to conversation history
-            st.session_state.conversation_history.append(f"{st.session_state.assistant_role}: {initial_response}")
-            st.session_state.question_asked = True
+        # Add assistant's initial message to conversation history
+        st.session_state.conversation_history.append(f"{st.session_state.assistant_role}: {initial_response}")
+        st.session_state.question_asked = True
 
-            # Display the assistant's initial message
-            st.write(f"{st.session_state.assistant_role}: {initial_response}")
+        # Display the assistant's initial message
+        st.write(f"{st.session_state.assistant_role}: {initial_response}")
 
-        # Process user input if available
-        if user_input:
-            # Add user input to conversation history
-            st.session_state.conversation_history.append(f"{st.session_state.user_role}: {user_input}")
+    # Process user input if available
+    if user_input:
+        # Add user input to conversation history
+        st.session_state.conversation_history.append(f"{st.session_state.user_role}: {user_input}")
 
-            # Query the document for a response based on the user's input
+        # Check if the user is a Bank Employee
+        if st.session_state.user_role == "Bank Employee":
+            # The Bank Employee will evaluate the response based on the document
             document_based_response = query_engine.query(user_input)
+            response_text = document_based_response if isinstance(document_based_response, str) else str(document_based_response)
+        else:
+            # Generate LLM response for other roles
+            response_text = llm.chat([
+                ChatMessage(role="system", content="You are a finance domain expert."),
+                ChatMessage(role="user", content=user_input),
+            ])
 
-            # Safely convert document_based_response to string
-            if isinstance(document_based_response, str):
-                response_text = document_based_response
-            else:
-                response_text = str(document_based_response)
+        # Add assistant's response to conversation history
+        st.session_state.conversation_history.append(f"{st.session_state.assistant_role}: {response_text}")
 
-            # Add assistant's response to conversation history
-            st.session_state.conversation_history.append(f"{st.session_state.assistant_role}: {response_text}")
+        st.session_state.question_asked = False  # Reset to allow another question
 
-            st.session_state.question_asked = False  # Reset to allow another question
-
-            # Display the assistant's response
-            st.write(f"{st.session_state.assistant_role}: {response_text}")
+        # Display the assistant's response
+        st.write(f"{st.session_state.assistant_role}: {response_text}")
 
     # Display the follow-up response here after embeddings section
     if st.session_state.question_asked:
