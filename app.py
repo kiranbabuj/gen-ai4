@@ -11,9 +11,9 @@ if 'conversation_history' not in st.session_state:
 if 'question_asked' not in st.session_state:
     st.session_state.question_asked = False
 if 'user_role' not in st.session_state:
-    st.session_state.user_role = "User"
+    st.session_state.user_role = "Customer"
 if 'assistant_role' not in st.session_state:
-    st.session_state.assistant_role = "Assistant"
+    st.session_state.assistant_role = "Bank Employee"
 
 # Streamlit UI for OpenAI API key input
 st.title("Conversational Assistant")
@@ -25,9 +25,18 @@ if api_key:
     os.environ["OPENAI_API_KEY"] = api_key
     st.success("API Key set successfully.")
 
-    # Customize roles
-    st.session_state.user_role = st.text_input("Enter user role:", value="User")
-    st.session_state.assistant_role = st.text_input("Enter assistant role:", value="Assistant")
+    # Select roles using a dropdown menu
+    st.session_state.user_role = st.selectbox(
+        "Select user role:",
+        options=["Customer", "Bank Employee"],
+        index=0  # Default to "Customer"
+    )
+    
+    st.session_state.assistant_role = st.selectbox(
+        "Select assistant role:",
+        options=["Bank Employee", "Customer"],
+        index=0  # Default to "Bank Employee"
+    )
 
     # Choose the LLM model
     model_choice = st.selectbox("Select an LLM model", ["gpt-4o-mini"])
@@ -71,8 +80,8 @@ if api_key:
         # Automatically query the document to initiate the conversation
         if not st.session_state.question_asked:
             st.write("## Assistant's Initial Conversation")
-            # Assistant starts the conversation based on the PDF content
-            initial_response = query_engine.query("based on the role assigned for the assistant, start a friendly conversation accordingly and make it interactive and maintain a professional tone, if required refer the document.keep it concise")
+            # Assistant starts the conversation based on the PDF content and assigned role
+            initial_response = query_engine.query("based on the role assigned for the assistant, start a friendly conversation accordingly and make it interactive and maintain a professional tone, if required refer the document. Keep it concise.")
             # Add assistant's initial message to conversation history
             st.session_state.conversation_history.append(f"{st.session_state.assistant_role}: {initial_response}")
             st.session_state.question_asked = True
