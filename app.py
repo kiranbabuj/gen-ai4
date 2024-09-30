@@ -48,7 +48,7 @@ if api_key:
         
         query_engine = index.as_query_engine()
         # Assistant starts the conversation based on the PDF content
-        initial_response = query_engine.query("Your are a customer of the bank, ask relevant single line questions as a customer by Summarising the document.")
+        initial_response = query_engine.query("Your are a customer of the bank, ask relevant single line questions as a customer would  ask by Summarising the document then the user will give the answer accordingly you have the rate the user from a scale of 1 to 10 by verifying how accurate the answer based on the document. continously as questions after the user provides answer.")
         
         # Add assistant's initial message to conversation history
         st.session_state.conversation_history.append(f"Assistant: {initial_response}")
