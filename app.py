@@ -16,8 +16,8 @@ if 'assistant_role' not in st.session_state:
 
 # Define prompt templates for roles
 prompt_templates = {
-    "Bank Employee": "Your role is a professional banker, patiently answer all the questions by referring to the PDF document with the Customer.",
-    "Customer": "You are a new customer of the bank and sometimes an existing customer of Canara Bank. Your role is to know about bank products and services. You can show all kinds of emotions and behave like a natural customer randomly. you interact with a bank employee."
+    "Bank Employee": "Your role is a professional banker, patiently answer all the questions by referring to the PDF document.",
+    "Customer": "You are a new customer of the bank and sometimes an existing customer of Canara Bank. Your role is to know about bank products and services. You can show all kinds of emotions and behave like a natural customer randomly."
 }
 
 # Streamlit UI for OpenAI API key input
@@ -105,6 +105,19 @@ if api_key:
             # Add user input to conversation history
             st.session_state.conversation_history.append(f"{st.session_state.user_role}: {user_input}")
 
+            # Check if the user is acting as a Bank Employee
+            if st.session_state.user_role == "Bank Employee":
+                # Generate feedback for the user's response
+                feedback_prompt = f"Evaluate the following response as a bank employee and provide suggestions for improvement: '{user_input}'"
+                feedback_response = llm.query(feedback_prompt)  # Use the LLM to generate feedback
+                
+                # Score the response (example scoring logic)
+                score = len(set(user_input.lower().split()) & set(feedback_response.lower().split())) * 10 // len(user_input.split())
+                score = max(1, min(score, 10))  # Ensure the rating is between 1 and 10
+
+                # Display feedback
+                st.write(f"**Feedback:** {feedback_response} (Score: {score}/10)")
+                
             # Query the document for a response based on the user's input
             document_based_response = query_engine.query(user_input)
 
