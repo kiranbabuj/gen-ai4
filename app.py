@@ -85,7 +85,7 @@ if api_key:
             if st.session_state.assistant_role == "Bank Employee":
                 initial_response = "Good morning, welcome to Canara Bank. How can I assist you today?"
             elif st.session_state.assistant_role == "Customer":
-                initial_response = "Hi there! I'm a customer, looking for assistance?"
+                initial_response = "Hi there! I'm a customer, looking for assistance."
 
             # Add assistant's initial message to conversation history
             st.session_state.conversation_history.append(f"{st.session_state.assistant_role}: {initial_response}")
@@ -127,8 +127,13 @@ if api_key:
             # Display the assistant's response
             st.write(f"{st.session_state.assistant_role}: {response_text} (Rating: {relevance_score}/10)")
 
-            # Continue asking the next question
-            follow_up_response = query_engine.query("Ask another relevant customer-like question.")
+            # Generate role-specific follow-up response
+            if st.session_state.assistant_role == "Bank Employee":
+                follow_up_response = query_engine.query("As a bank employee, ask the customer another banking-related question.")
+            elif st.session_state.assistant_role == "Customer":
+                follow_up_response = query_engine.query("As a customer, ask a follow-up question to the assistant.")
+
+            # Add follow-up response to the conversation history
             st.session_state.conversation_history.append(f"{st.session_state.assistant_role}: {follow_up_response}")
             st.write(f"{st.session_state.assistant_role}: {follow_up_response}")
 
