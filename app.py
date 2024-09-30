@@ -35,13 +35,11 @@ if api_key:
         if st.button("Switch to Customer"):
             st.session_state.user_role = "Customer"
             st.session_state.assistant_role = "Bank Employee"
-            st.experimental_rerun()  # Rerun the app to update the displayed roles
     
     with col2:
         if st.button("Switch to Bank Employee"):
             st.session_state.user_role = "Bank Employee"
             st.session_state.assistant_role = "Customer"
-            st.experimental_rerun()  # Rerun the app to update the displayed roles
 
     # Choose the LLM model
     model_choice = st.selectbox("Select an LLM model", ["gpt-4o-mini"])
