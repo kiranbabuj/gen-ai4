@@ -25,18 +25,21 @@ if api_key:
     os.environ["OPENAI_API_KEY"] = api_key
     st.success("API Key set successfully.")
 
-    # Select roles using a dropdown menu
-    st.session_state.user_role = st.selectbox(
-        "Select user role:",
-        options=["Customer", "Bank Employee"],
-        index=0  # Default to "Customer"
-    )
+    # Display current roles
+    st.write(f"**User Role:** {st.session_state.user_role}")
+    st.write(f"**Assistant Role:** {st.session_state.assistant_role}")
+
+    # Role switching buttons
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("Switch to Customer"):
+            st.session_state.user_role = "Customer"
+            st.session_state.assistant_role = "Bank Employee"
     
-    st.session_state.assistant_role = st.selectbox(
-        "Select assistant role:",
-        options=["Bank Employee", "Customer"],
-        index=0  # Default to "Bank Employee"
-    )
+    with col2:
+        if st.button("Switch to Bank Employee"):
+            st.session_state.user_role = "Bank Employee"
+            st.session_state.assistant_role = "Customer"
 
     # Choose the LLM model
     model_choice = st.selectbox("Select an LLM model", ["gpt-4o-mini"])
