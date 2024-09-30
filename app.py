@@ -85,17 +85,77 @@ if api_key:
 
             # If the user has entered a response
             if user_input:
-                # Add user input to conversation history
-                st.session_state.conversation_history.append(f"{st.session_state.user_role}: {user_input}")
+                # Validate the user input and avoid empty inputs
+                if user_input.strip() == "":
+                    st.warning("Please enter a valid response.")
+                else:
+                    # Append user input to conversation history
+                    st.session_state.conversation_history.append(f"{st.session_state.user_role}: {user_input}")
 
-                # Process the user input
-                # Query the document and generate a response
-                document_based_response = query_engine.query(user_input)
+                    # Process the user input
+                    document_based_response = query_engine.query(user_input)
 
-                # Handling response safely
-                response_text = str(document_based_response) if document_based_response else "No response generated."
+                    response_text = str(document_based_response) if document_based_response else "No response generated."
+                    
+                    # If the user is a Bank Employee, generate feedback for their response
+                    if st.session_state.user_role == "Bank Employee":
+                        feedback_prompt = f"Evaluate the following response from a bank employee and suggest improvements: {user_input}"
+                        
+                        # Make sure to use the correct method to generate feedback
+                        try:
+                            feedback_response = llm.query(feedback_prompt)  # Use the appropriate method
+                            st.session_state.conversation_history.append(f"Feedback: {feedback_response}")
+                            st.write(f"Feedback: {feedback_response}")
+                        except Exception as e:
+                            st.error(f"Error generating feedback: {e}")
+                    
+                    # Append the assistant's response to history
+                    st.session_state.conversation_history.append(f"{st.session_state.assistant_role}: {response_text}")
 
-                # If the user is a Bank Employee, generate feedback for their response
-                if st.session_state.user_role == "Bank Employee":
-                    feedback_prompt = f"Evaluate the following response from a bank employee and suggest improvements: {user_input}"
-                    feedb
+                    # Clear user input after processing
+                    st.session_state.user_input = ""  # Clear the user input field
+
+        with col2:
+            if st.button("Clear History"):
+                # Clear conversation history and reset flags
+                st.session_state.conversation_history = []
+                st.session_state.question_asked = False
+                st.session_state.user_input = ""  # Clear the user input field
+
+        # Automatically query the document to initiate the conversation
+        if not st.session_state.question_asked:
+            st.write("## Assistant's Initial Conversation")
+
+            # Generate role-specific initial response
+            if st.session_state.assistant_role == "Bank Employee":
+                initial_response = "Good morning, welcome to Canara Bank. How can I assist you today?"
+            elif st.session_state.assistant_role == "Customer":
+                initial_response = "Hi there! I'm a customer, looking for assistance."
+
+            # Add assistant's initial message to conversation history
+            st.session_state.conversation_history.append(f"{st.session_state.assistant_role}: {initial_response}")
+            st.session_state.question_asked = True
+
+            # Display the assistant's initial message
+            st.write(f"{st.session_state.assistant_role}: {initial_response}")
+
+        # Display conversation history with different colors and numbering
+        if st.session_state.conversation_history:
+            st.write("## Conversation History")
+            for idx, entry in enumerate(st.session_state.conversation_history, start=1):
+                if entry.startswith(st.session_state.user_role):
+                    st.markdown(f"<div style='color:blue;'>**{idx}. {entry}**</div>", unsafe_allow_html=True)
+                else:
+                    st.markdown(f"<div style='color:green;'>**{idx}. {entry}**</div>", unsafe_allow_html=True)
+
+        # Download conversation history as a text file
+        if st.session_state.conversation_history:
+            conversation_text = "\n".join(st.session_state.conversation_history)
+            st.download_button(
+                label="Download Conversation History",
+                data=conversation_text,
+                file_name="conversation_history.txt",
+                mime="text/plain",
+            )
+else:
+    st.warning("Please enter your OpenAI API key
