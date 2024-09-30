@@ -1,9 +1,67 @@
 import streamlit as st
 import os
 from llama_index.llms.openai import OpenAI
-from llama_index.core.llms import ChatMessage
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 from llama_index.core import Settings, VectorStoreIndex, SimpleDirectoryReader
+
+# Custom CSS to mimic Apple-like design
+st.markdown("""
+    <style>
+    /* Set global font family and base styles */
+    html, body, [class*="css"]  {
+        font-family: 'Helvetica Neue', sans-serif;
+        background-color: #f8f8f8;
+        color: #333333;
+    }
+    .stButton>button {
+        background-color: #007aff;
+        color: white;
+        border-radius: 8px;
+        padding: 10px 20px;
+        font-size: 16px;
+        font-weight: bold;
+    }
+    .stTextInput>div>div>input {
+        border: 1px solid #d1d1d1;
+        padding: 12px;
+        border-radius: 8px;
+        background-color: white;
+    }
+    .stFileUploader>div>div>button {
+        background-color: #007aff;
+        color: white;
+        border-radius: 8px;
+        font-weight: bold;
+        padding: 10px;
+    }
+    .stAlert {
+        border-left: 4px solid #007aff;
+    }
+    .stDownloadButton>button {
+        background-color: #007aff;
+        color: white;
+        border-radius: 8px;
+        font-weight: bold;
+        padding: 10px;
+    }
+    .stSelectbox>div>div>div>div>div>button {
+        background-color: white;
+        color: #333;
+        border: 1px solid #d1d1d1;
+        padding: 10px;
+        border-radius: 8px;
+        font-size: 16px;
+    }
+    h1 {
+        font-size: 40px;
+        color: #333333;
+        font-weight: bold;
+    }
+    h2, h3 {
+        color: #333333;
+    }
+    </style>
+""", unsafe_allow_html=True)
 
 # Initialize conversation history in session state
 if 'conversation_history' not in st.session_state:
