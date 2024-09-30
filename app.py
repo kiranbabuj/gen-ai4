@@ -6,12 +6,47 @@ from llama_index.core.llms import ChatMessage
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 from llama_index.core import Settings, VectorStoreIndex, SimpleDirectoryReader
 
-# Define the evaluate_response function before using it
+
+class Role:
+    """Base class for roles."""
+    def __init__(self, role_name):
+        self.role_name = role_name
+
+    def respond(self, user_input, query_engine):
+        """Method to respond based on user input."""
+        raise NotImplementedError("Subclasses should implement this!")
+
+
+class Customer(Role):
+    """Customer role implementation."""
+    def __init__(self):
+        super().__init__("Customer")
+
+    def respond(self, user_input, query_engine):
+        """Generate a response from the LLM."""
+        llm = OpenAI(model="gpt-4o-mini")  # Choose your model
+        messages = [
+            ChatMessage(role="system", content="You are a customer looking for assistance."),
+            ChatMessage(role="user", content=user_input),
+        ]
+        response = llm.chat(messages)
+        return response
+
+
+class BankEmployee(Role):
+    """Bank Employee role implementation."""
+    def __init__(self):
+        super().__init__("Bank Employee")
+
+    def respond(self, user_input, query_engine):
+        """Generate a document-based response."""
+        document_based_response = query_engine.query(user_input)
+        feedback_text = evaluate_response(user_input, document_based_response)
+        return document_based_response, feedback_text
+
+
 def evaluate_response(user_input, response_text):
-    """
-    Evaluate the response based on the user input and provide feedback.
-    """
-    # For training, we will check if the response includes key terms.
+    """Evaluate the response based on the user input and provide feedback."""
     key_terms = ['bank', 'loan', 'account', 'deposit', 'withdrawal', 'interest rate']
     missing_terms = [term for term in key_terms if term not in response_text.lower()]
 
@@ -22,17 +57,15 @@ def evaluate_response(user_input, response_text):
 
     return feedback
 
+
 # Initialize conversation history and roles in session state
 if 'conversation_history' not in st.session_state:
     st.session_state.conversation_history = []
 if 'question_asked' not in st.session_state:
     st.session_state.question_asked = False
-if 'user_role' not in st.session_state:
-    st.session_state.user_role = "Customer"
-if 'assistant_role' not in st.session_state:
-    st.session_state.assistant_role = "Bank Employee"
 if 'api_key' not in st.session_state:
     st.session_state.api_key = None  # Initialize API key in session state
+
 
 # Streamlit UI for OpenAI API key input
 st.title("Conversational Assistant")
@@ -48,24 +81,13 @@ else:
     st.success("API Key is already set.")
 
 # Select roles using a dropdown menu
-st.session_state.user_role = st.selectbox(
-    "Select user role:",
-    options=["Customer", "Bank Employee"],
-    index=0  # Default to "Customer"
-)
+role_choice = st.selectbox("Select your role:", options=["Customer", "Bank Employee"])
 
-st.session_state.assistant_role = st.selectbox(
-    "Select assistant role:",
-    options=["Bank Employee", "Customer"],
-    index=0  # Default to "Bank Employee"
-)
-
-# Choose the LLM model
-model_choice = st.selectbox("Select an LLM model", ["gpt-4o-mini"])
-
-# Initialize the LLM
-st.write("Initializing LLM model...")
-llm = OpenAI(model=model_choice)
+# Create role instances based on user choice
+if role_choice == "Customer":
+    current_role = Customer()
+else:
+    current_role = BankEmployee()
 
 # Embeddings section
 st.write("## Embeddings Section")
@@ -99,62 +121,23 @@ if uploaded_file is not None:
             st.session_state.conversation_history = []
             st.session_state.question_asked = False
 
-    # Automatically query the document to initiate the conversation
-    if not st.session_state.question_asked:
-        st.write("## Assistant's Initial Conversation")
-
-        # Generate role-specific initial response
-        if st.session_state.assistant_role == "Bank Employee":
-            initial_response = "Good morning, welcome to Canara Bank. How can I assist you today?"
-        elif st.session_state.assistant_role == "Customer":
-            initial_response = "Hi there! I'm a customer, looking for assistance."
-
-        # Add assistant's initial message to conversation history
-        st.session_state.conversation_history.append(f"{st.session_state.assistant_role}: {initial_response}")
-        st.session_state.question_asked = True
-
-        # Display the assistant's initial message
-        st.write(f"{st.session_state.assistant_role}: {initial_response}")
-
     # Process user input if available
     if user_input:
         # Add user input to conversation history
-        st.session_state.conversation_history.append(f"{st.session_state.user_role}: {user_input}")
+        st.session_state.conversation_history.append(f"{current_role.role_name}: {user_input}")
 
-        # Check if the user is a Bank Employee
-        if st.session_state.user_role == "Bank Employee":
-            # The Bank Employee will evaluate the response based on the document
-            document_based_response = query_engine.query(user_input)
-            response_text = document_based_response if isinstance(document_based_response, str) else str(document_based_response)
-
-            # Evaluate the response for improvement
-            feedback_text = evaluate_response(user_input, response_text)
-            st.session_state.conversation_history.append(f"{st.session_state.assistant_role}: {response_text} (Feedback: {feedback_text})")
-        
+        # Get the response based on the role
+        if isinstance(current_role, BankEmployee):
+            response_text, feedback_text = current_role.respond(user_input, query_engine)
+            st.session_state.conversation_history.append(f"{current_role.role_name}: {response_text} (Feedback: {feedback_text})")
         else:
-            # Generate LLM response for other roles
-            response_text = llm.chat([
-                ChatMessage(role="system", content="You are a finance domain expert."),
-                ChatMessage(role="user", content=user_input),
-            ])
-            st.session_state.conversation_history.append(f"{st.session_state.assistant_role}: {response_text}")
+            response_text = current_role.respond(user_input, query_engine)
+            st.session_state.conversation_history.append(f"{current_role.role_name}: {response_text}")
 
         st.session_state.question_asked = False  # Reset to allow another question
 
         # Display the assistant's response
-        st.write(f"{st.session_state.assistant_role}: {response_text}")
-
-    # Display the follow-up response here after embeddings section
-    if st.session_state.question_asked:
-        # Generate role-specific follow-up response
-        if st.session_state.assistant_role == "Bank Employee":
-            follow_up_response = query_engine.query("As a bank employee, ask the customer another banking-related question.")
-        elif st.session_state.assistant_role == "Customer":
-            follow_up_response = query_engine.query("As a customer, ask a follow-up question to the assistant.")
-
-        # Add follow-up response to the conversation history
-        st.session_state.conversation_history.append(f"{st.session_state.assistant_role}: {follow_up_response}")
-        st.write(f"{st.session_state.assistant_role}: {follow_up_response}")
+        st.write(f"{current_role.role_name}: {response_text}")
 
     # Display conversation history in a side-by-side format
     if st.session_state.conversation_history:
@@ -166,20 +149,20 @@ if uploaded_file is not None:
 
         # Track the last user role
         last_role = None
-        
+
         for entry in st.session_state.conversation_history:
             role, message = entry.split(": ", 1)
 
-            if role == st.session_state.user_role:
+            if role == "Customer":
                 # If the role is the same as the last one, append to the last message
-                if last_role == st.session_state.user_role:
+                if last_role == "Customer":
                     customer_messages[-1] += f" | {message.strip()}"
                 else:
                     customer_messages.append(message.strip())
                     bank_employee_messages.append("")  # Empty entry for the bank employee column
             else:
                 # If the role is the same as the last one, append to the last message
-                if last_role == st.session_state.assistant_role:
+                if last_role == "Bank Employee":
                     bank_employee_messages[-1] += f" | {message.strip()}"
                 else:
                     bank_employee_messages.append(message.strip())
@@ -190,8 +173,8 @@ if uploaded_file is not None:
 
         # Create a DataFrame
         conversation_df = pd.DataFrame({
-            st.session_state.user_role: customer_messages,
-            st.session_state.assistant_role: bank_employee_messages
+            "Customer": customer_messages,
+            "Bank Employee": bank_employee_messages
         })
 
         # Display the DataFrame as a table
