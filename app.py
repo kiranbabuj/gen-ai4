@@ -110,8 +110,12 @@ if api_key:
                 # Generate feedback for the user's response
                 feedback_prompt = f"Evaluate the following response as a bank employee and provide suggestions for improvement: '{user_input}'"
                 
-                # Adjust this line according to your LLM library's correct method
-                feedback_response = llm.call(feedback_prompt)  # Use the correct method to generate feedback
+                # Check available methods of llm for feedback generation
+                available_methods = dir(llm)
+                st.write(f"Available methods for llm: {available_methods}")  # Display available methods
+                
+                # Use the correct method to generate feedback based on available methods
+                feedback_response = llm.generate(feedback_prompt)  # Replace with the appropriate method found
                 
                 # Score the response (example scoring logic)
                 score = len(set(user_input.lower().split()) & set(feedback_response.lower().split())) * 10 // len(user_input.split())
