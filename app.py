@@ -80,8 +80,13 @@ if api_key:
         # Automatically query the document to initiate the conversation
         if not st.session_state.question_asked:
             st.write("## Assistant's Initial Conversation")
-            # Assistant starts the conversation based on the PDF content and assigned role
-            initial_response = query_engine.query("based on the role assigned for the assistant, start a friendly conversation accordingly and make it interactive and maintain a professional tone, if required refer the document. Keep it concise.")
+
+            # Generate role-specific initial response
+            if st.session_state.assistant_role == "Bank Employee":
+                initial_response = "Good morning, welcome to Canara Bank. How can I assist you today?"
+            elif st.session_state.assistant_role == "Customer":
+                initial_response = "Hi there! I'm a customer, looking for assistance. How can I help you today?"
+
             # Add assistant's initial message to conversation history
             st.session_state.conversation_history.append(f"{st.session_state.assistant_role}: {initial_response}")
             st.session_state.question_asked = True
