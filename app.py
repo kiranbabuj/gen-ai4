@@ -21,7 +21,7 @@ prompt_templates = {
 }
 
 # Streamlit UI for OpenAI API key input
-st.title("Insta Serve AI")
+st.title("Fin Guru 1.0")
 
 # Input API Key
 api_key = st.text_input("Enter your OpenAI API key", type="password")
